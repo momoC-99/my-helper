@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>每日小助手</title>
+  
+  <!-- PWA 配置 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="每日小助手">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23f5f3f0' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle'>📒</text></svg>">
+  
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -25,7 +33,6 @@
       border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 0.95em;
     }
 
-    /* 开工面板 */
     .schedule-panel {
       background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 15px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.08); display: none;
@@ -55,7 +62,6 @@
     }
     .progress-bar-fill { height: 100%; background: #8b9d7c; border-radius: 10px; }
 
-    /* 小结面板 */
     .summary-panel {
       background: #fff8f0; border-radius: 16px; padding: 18px; margin-bottom: 15px;
       border: 1px solid #f0e2d0; line-height: 1.7; font-size: 0.9em; display: none;
@@ -90,6 +96,7 @@
     .delete-btn { color: #c07a6b; }
     .done-btn { color: #7a9c6c; }
     .prog-btn { color: #d49a6a; font-size: 1em; }
+    .cancel-btn { color: #e67e22; font-size: 0.8em; }
     .badge {
       display: inline-block; padding: 2px 8px; border-radius: 12px;
       font-size: 0.7em; font-weight: bold; margin-right: 3px;
@@ -100,6 +107,7 @@
     .cat-work { background: #d4d9f2; color: #2c3e6b; }
     .cat-life { background: #f2e0d4; color: #7a4d34; }
     .cat-hobby { background: #d4f2e0; color: #2d5a3a; }
+    .cat-checkin { background: #e8daef; color: #6c3483; }
 
     .toggle-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -111,6 +119,8 @@
       background: #8b9d7c; color: white; border: none; padding: 5px 12px;
       border-radius: 15px; cursor: pointer; font-size: 0.8em;
     }
+    .book-movie-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+    .book-movie-grid .card { flex: 1; min-width: 220px; }
 
     .lock-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -131,22 +141,14 @@
     .err { color: #c0392b; font-size: 0.9em; min-height: 22px; }
     #app { display: none; }
   </style>
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="每日小助手">
-<link rel="apple-touch-icon" href="icon.png">
 </head>
-<script>
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-</script>
 <body>
 
 <div class="lock-screen" id="lockScreen">
   <div class="lock-box">
     <h2>🔐 <span id="lockTitle">欢迎使用每日小助手</span></h2>
     <p id="lockTip">请设置一个 4-6 位数字密码</p>
-    <input type="password" id="lockInput" placeholder="输入密码" maxlength="6">
+    <input type="password" id="lockInput" placeholder="输入密码" maxlength="6" inputmode="numeric" pattern="[0-9]*">
     <p class="err" id="lockError"></p>
     <button id="lockBtn">确认设置</button>
   </div>
@@ -159,11 +161,10 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 </div>
 
 <div class="command-area">
-  <input type="text" id="magicInput" placeholder='输入"开工" / "打卡 每天 运动" / "项目 xx" / "灵感 xx"...'>
+  <input type="text" id="magicInput" placeholder='输入"开工" / "打卡 每天 运动" / "项目 xx" / "灵感 xx" / "推荐书目《xx》"...'>
   <button id="magicBtn">发送</button>
 </div>
 
-<!-- 小结面板（自动推送） -->
 <div class="summary-panel" id="summaryPanel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
     <h3 id="summaryTitle" style="margin:0;">📊 小结</h3>
@@ -172,7 +173,6 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   <div id="summaryContent"></div>
 </div>
 
-<!-- 开工提醒面板 -->
 <div class="schedule-panel" id="schedulePanel">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
     <h3 style="margin:0;">📋 今日行程提醒</h3>
@@ -181,7 +181,6 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   <div id="scheduleList"></div>
 </div>
 
-<!-- 开心日记 -->
 <div class="card">
   <h2>📝 开心日记 <button class="export-btn" onclick="exportDiary()">导出</button></h2>
   <div class="input-row">
@@ -191,7 +190,6 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   <div id="diaryList"></div>
 </div>
 
-<!-- 待办事项（折叠） -->
 <div class="card">
   <div class="toggle-header" id="todoToggle">
     <h2>✅ 待办事项 <span style="font-size:0.7em;color:#b1a391;">(点击展开)</span></h2>
@@ -209,7 +207,6 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   </div>
 </div>
 
-<!-- IDEA（折叠） -->
 <div class="card">
   <div class="toggle-header" id="ideaToggle">
     <h2>💡 IDEA <span style="font-size:0.7em;color:#b1a391;">(点击展开)</span></h2>
@@ -221,11 +218,29 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   </div>
 </div>
 
+<div class="book-movie-grid">
+  <div class="card">
+    <h2>📚 我的书单</h2>
+    <div class="input-row">
+      <input type="text" id="bookInput" placeholder="书名 / 作者">
+      <button id="bookBtn">添加</button>
+    </div>
+    <div id="bookList"></div>
+  </div>
+  <div class="card">
+    <h2>🎬 我的影单</h2>
+    <div class="input-row">
+      <input type="text" id="movieInput" placeholder="影片名">
+      <button id="movieBtn">添加</button>
+    </div>
+    <div id="movieList"></div>
+  </div>
+</div>
+
 <div class="footer-note">✨ 所有数据安全保存在你的设备里</div>
 </div>
 
 <script>
-// ========== 密码 ==========
 (function(){
   var KEY='my_pwd', saved=localStorage.getItem(KEY), isNew=!saved;
   document.getElementById('lockTitle').textContent=isNew?'设置密码':'请输入密码';
@@ -242,31 +257,38 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
       if(v===saved) unlock(); else document.getElementById('lockError').textContent='密码错误';
     }
   };
+  document.getElementById('lockInput').onkeydown=function(e){ if(e.key==='Enter') document.getElementById('lockBtn').click(); };
+  document.getElementById('lockInput').oninput=function(){ this.value=this.value.replace(/[^0-9]/g,''); };
   function unlock(){ document.getElementById('lockScreen').style.display='none'; document.getElementById('app').style.display='block'; initApp(); }
 })();
 
-// ========== 核心应用 ==========
 function initApp(){
   var quotes=["每一天都是崭新的开始，加油！","你值得拥有美好的一切。","再小的努力，乘以365都很明显。","今天也是被爱包围的一天。","慢慢来，会更快。","你的存在本身就是一种美好。"];
   function getToday(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
   function genId(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,6); }
-  var STORAGE='daily_joy_data_v4';
-  function load(){ var r=localStorage.getItem(STORAGE); return r?JSON.parse(r):{ diary:[], todos:[], ideas:[], checkins:[] }; }
+  var STORAGE='daily_joy_data_v5';
+  function load(){
+    var r=localStorage.getItem(STORAGE);
+    if(r){
+      try{
+        var d=JSON.parse(r);
+        if(!d.checkins) d.checkins=[];
+        if(!d.books) d.books=[];
+        if(!d.movies) d.movies=[];
+        return d;
+      }catch(e){}
+    }
+    return { diary:[], todos:[], ideas:[], checkins:[], books:[], movies:[] };
+  }
   function save(d){ localStorage.setItem(STORAGE,JSON.stringify(d)); }
   var data=load();
-  if(!data.checkins) data.checkins=[];
   document.getElementById('encourageText').textContent='\u201C'+quotes[Math.floor(Math.random()*quotes.length)]+'\u201D';
   document.getElementById('todoDate').value=getToday();
 
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  // ========== 日期工具 ==========
   function isSunday(){ return new Date().getDay()===0; }
-  function isLastDayOfMonth(){
-    var d=new Date();
-    var lastDay=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-    return d.getDate()===lastDay;
-  }
+  function isLastDayOfMonth(){ var d=new Date(); return d.getDate()===new Date(d.getFullYear(),d.getMonth()+1,0).getDate(); }
   function getWeekRange(){
     var d=new Date(), day=d.getDay(), diff=day===0?-6:1-day;
     var start=new Date(d); start.setDate(d.getDate()+diff); start.setHours(0,0,0,0);
@@ -275,14 +297,11 @@ function initApp(){
   }
   function getMonthRange(){
     var d=new Date();
-    var start=new Date(d.getFullYear(),d.getMonth(),1);
-    var end=new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59);
-    return {start:start,end:end};
+    return {start:new Date(d.getFullYear(),d.getMonth(),1),end:new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59)};
   }
   function fmt(dd){ return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'); }
   function inRange(d,start,end){ var dd=new Date(d); return dd>=start&&dd<=end; }
 
-  // ========== 打卡判断 ==========
   function isCheckinDueToday(c){
     var today=new Date(), dayOfWeek=today.getDay();
     var cnDay=['周日','周一','周二','周三','周四','周五','周六'][dayOfWeek];
@@ -291,7 +310,6 @@ function initApp(){
     return false;
   }
 
-  // ========== 渲染 ==========
   function renderAll(){
     var today=getToday();
 
@@ -301,44 +319,80 @@ function initApp(){
     else for(var i=0;i<di.length;i++) dh+='<div class="list-item"><span>📝 '+esc(di[i].content)+'</span><button class="action-btn delete-btn" onclick="del(\'diary\',\''+di[i].id+'\')">✕</button></div>';
     document.getElementById('diaryList').innerHTML=dh;
 
-    // 待办
+    // 待办 + 打卡
     var th='', todos=data.todos.filter(function(t){return !t.done;});
+    var checkins=data.checkins;
     var order={high:0,mid:1,low:2};
     todos.sort(function(a,b){return (order[a.priority]||1)-(order[b.priority]||1);});
-    if(!todos.length) th='<div style="color:#b1a391;font-size:0.9em;">暂无待办~</div>';
-    else for(var i=0;i<todos.length;i++){
-      var t=todos[i], pl={high:'高',mid:'中',low:'低'}[t.priority], cl={work:'工作',life:'生活',hobby:'爱好'}[t.category];
-      var isP=t.isProject||false, prog=t.progress||0;
-      th+='<div class="list-item"><span><span class="badge priority-'+t.priority+'">'+pl+'</span><span class="badge cat-'+t.category+'">'+cl+'</span>📅'+t.date+' '+esc(t.content);
-      if(isP) th+=' <span class="progress-wrap"><span class="progress-bar-bg"><span class="progress-bar-fill" style="width:'+prog+'%"></span></span>'+prog+'%</span>';
-      th+='</span><div>';
-      if(isP) th+='<button class="action-btn prog-btn" onclick="updateProg(\''+t.id+'\')">📊</button>';
-      th+='<button class="action-btn done-btn" onclick="doneTodo(\''+t.id+'\')">✔️</button>';
-      th+='<button class="action-btn delete-btn" onclick="del(\'todos\',\''+t.id+'\')">✕</button>';
-      th+='</div></div>';
+    if(!todos.length&&!checkins.length) th='<div style="color:#b1a391;font-size:0.9em;">暂无待办~</div>';
+    else{
+      for(var i=0;i<todos.length;i++){
+        var t=todos[i], pl={high:'高',mid:'中',low:'低'}[t.priority], cl={work:'工作',life:'生活',hobby:'爱好'}[t.category];
+        var isP=t.isProject||false, prog=t.progress||0;
+        th+='<div class="list-item"><span><span class="badge priority-'+t.priority+'">'+pl+'</span><span class="badge cat-'+t.category+'">'+cl+'</span>📅'+t.date+' '+esc(t.content);
+        if(isP) th+=' <span class="progress-wrap"><span class="progress-bar-bg"><span class="progress-bar-fill" style="width:'+prog+'%"></span></span>'+prog+'%</span>';
+        th+='</span><div>';
+        if(isP) th+='<button class="action-btn prog-btn" onclick="updateProg(\''+t.id+'\')">📊</button>';
+        th+='<button class="action-btn done-btn" onclick="doneTodo(\''+t.id+'\')">✔️</button>';
+        th+='<button class="action-btn delete-btn" onclick="del(\'todos\',\''+t.id+'\')">✕</button>';
+        th+='</div></div>';
+      }
+      for(var i=0;i<checkins.length;i++){
+        var c=checkins[i];
+        th+='<div class="list-item"><span><span class="badge cat-checkin">🔁打卡</span>'+esc(c.name)+' <small style="color:#b1a391;">('+c.freq+')</small></span><div>';
+        th+='<button class="action-btn cancel-btn" onclick="cancelCheckin(\''+c.id+'\')">取消打卡</button>';
+        th+='</div></div>';
+      }
     }
     document.getElementById('todoList').innerHTML=th;
 
-    // IDEA
+    // IDEA（带完成按钮）
     var ih='', ideas=data.ideas.slice(-15).reverse();
     if(!ideas.length) ih='<div style="color:#b1a391;font-size:0.9em;">还没有灵感记录~</div>';
-    else for(var i=0;i<ideas.length;i++) ih+='<div class="list-item"><span>💡 '+esc(ideas[i].content)+' <small style="color:#b1a391;">('+ideas[i].date+')</small></span><button class="action-btn delete-btn" onclick="del(\'ideas\',\''+ideas[i].id+'\')">✕</button></div>';
+    else for(var i=0;i<ideas.length;i++){
+      var idea=ideas[i];
+      ih+='<div class="list-item" style="'+(idea.done?'text-decoration:line-through;opacity:0.6;':'')+'"><span>💡 '+esc(idea.content)+' <small style="color:#b1a391;">('+idea.date+')</small></span><div>';
+      if(!idea.done) ih+='<button class="action-btn done-btn" onclick="doneIdea(\''+idea.id+'\')">✔️</button>';
+      ih+='<button class="action-btn delete-btn" onclick="del(\'ideas\',\''+idea.id+'\')">✕</button>';
+      ih+='</div></div>';
+    }
     document.getElementById('ideaList').innerHTML=ih;
+
+    // 书单
+    var bh='', books=data.books;
+    if(!books.length) bh='<div style="color:#b1a391;font-size:0.9em;">还没有添加书籍~</div>';
+    else for(var i=0;i<books.length;i++){
+      var b=books[i];
+      bh+='<div class="list-item" style="'+(b.done?'text-decoration:line-through;opacity:0.6;':'')+'"><span>📖 '+esc(b.title)+(b.author?' - '+esc(b.author):'')+'</span><div>';
+      if(!b.done) bh+='<button class="action-btn done-btn" onclick="doneBook(\''+b.id+'\')">✔️</button>';
+      bh+='<button class="action-btn delete-btn" onclick="del(\'books\',\''+b.id+'\')">✕</button>';
+      bh+='</div></div>';
+    }
+    document.getElementById('bookList').innerHTML=bh;
+
+    // 影单
+    var mh='', movies=data.movies;
+    if(!movies.length) mh='<div style="color:#b1a391;font-size:0.9em;">还没有添加影片~</div>';
+    else for(var i=0;i<movies.length;i++){
+      var m=movies[i];
+      mh+='<div class="list-item" style="'+(m.done?'text-decoration:line-through;opacity:0.6;':'')+'"><span>🎬 '+esc(m.title)+'</span><div>';
+      if(!m.done) mh+='<button class="action-btn done-btn" onclick="doneMovie(\''+m.id+'\')">✔️</button>';
+      mh+='<button class="action-btn delete-btn" onclick="del(\'movies\',\''+m.id+'\')">✕</button>';
+      mh+='</div></div>';
+    }
+    document.getElementById('movieList').innerHTML=mh;
 
     if(document.getElementById('schedulePanel').style.display==='block') renderSchedule();
   }
 
-  // ========== 小结生成 ==========
   function generateSummary(type){
     var range, label;
     if(type==='week'){ range=getWeekRange(); label='本周'; }
     else{ range=getMonthRange(); label='本月'; }
     var start=range.start, end=range.end;
-
     var completed=data.todos.filter(function(t){return t.done&&t.completedDate&&inRange(t.completedDate,start,end);});
     var diaryCount=data.diary.filter(function(d){return inRange(d.date,start,end);}).length;
     var ideaCount=data.ideas.filter(function(d){return inRange(d.date,start,end);}).length;
-
     var checkinStats='';
     for(var i=0;i<data.checkins.length;i++){
       var c=data.checkins[i], count=0, totalDays=0;
@@ -349,15 +403,10 @@ function initApp(){
       var pct=totalDays>0?Math.round(count/totalDays*100):0;
       checkinStats+='<p>🔁 '+esc(c.name)+'：完成 '+count+' 次（'+pct+'%）</p>';
     }
-
     var msg='';
     if(type==='week'){
       msg+='<p>✅ 本周完成了 <b>'+completed.length+'</b> 项任务：</p>';
-      if(completed.length>0){
-        msg+='<ul>';
-        for(var i=0;i<completed.length;i++) msg+='<li>'+esc(completed[i].content)+'</li>';
-        msg+='</ul>';
-      }
+      if(completed.length>0){ msg+='<ul>'; for(var i=0;i<completed.length;i++) msg+='<li>'+esc(completed[i].content)+'</li>'; msg+='</ul>'; }
       msg+='<p>📝 记录了 <b>'+diaryCount+'</b> 篇开心日记</p>';
       msg+='<p>💡 捕捉了 <b>'+ideaCount+'</b> 个灵感</p>';
       msg+=checkinStats;
@@ -367,76 +416,84 @@ function initApp(){
       msg+='<p>💡 捕捉了 <b>'+ideaCount+'</b> 个灵感</p>';
       msg+=checkinStats;
     }
-
     msg+='<p style="margin-top:8px;color:#8b5e3c;">';
     if(completed.length>10) msg+='你像一颗小太阳，高效又温暖 ☀️';
     else if(diaryCount>5) msg+='你用心记录生活，本身就是一种美好 🌸';
     else msg+='每一天都在积累，你比自己想象的更强大 🌱';
     msg+='</p>';
-
     document.getElementById('summaryTitle').textContent='📊 '+label+'小结';
     document.getElementById('summaryContent').innerHTML=msg;
     document.getElementById('summaryPanel').style.display='block';
   }
 
-  // ========== 开工面板（含自动推送小结） ==========
   function renderSchedule(){
-    var today=getToday();
-    var list=document.getElementById('scheduleList');
-
-    // 只显示今天和今天之前未完成的待办
-    var todos=data.todos.filter(function(t){return !t.done && t.date <= today;});
+    var today=getToday(), list=document.getElementById('scheduleList');
+    var todos=data.todos.filter(function(t){return !t.done&&t.date<=today;});
     var checkins=data.checkins.filter(function(c){return isCheckinDueToday(c);});
-
+    var ideas=data.ideas.filter(function(i){return !i.done&&i.date<=today;});
     var all=[];
     for(var i=0;i<todos.length;i++) all.push({type:'todo',obj:todos[i]});
     for(var i=0;i<checkins.length;i++) all.push({type:'checkin',obj:checkins[i]});
-
+    for(var i=0;i<ideas.length;i++) all.push({type:'idea',obj:ideas[i]});
     if(!all.length){ list.innerHTML='<div style="color:#b1a391;padding:8px;font-size:0.9em;">今天没有行程~ 🌿</div>'; return; }
-
     var h='';
     for(var i=0;i<all.length;i++){
       var item=all[i];
       if(item.type==='todo'){
         var t=item.obj, isP=t.isProject||false, prog=t.progress||0;
-        h+='<div class="schedule-item">';
-        h+='<span class="task-info">📌 '+esc(t.content);
+        h+='<div class="schedule-item"><span class="task-info">📌 '+esc(t.content);
         if(isP) h+=' <span class="progress-wrap"><span class="progress-bar-bg"><span class="progress-bar-fill" style="width:'+prog+'%"></span></span>'+prog+'%</span>';
-        h+='</span>';
-        h+='<span class="actions">';
+        h+='</span><span class="actions">';
         if(isP) h+='<button class="mini-prog-btn" onclick="updateProgFromSchedule(\''+t.id+'\')">📊</button>';
         h+='<button class="circle-btn" onclick="circleDoneTodo(\''+t.id+'\')">○</button>';
         h+='</span></div>';
-      }else{
+      }else if(item.type==='checkin'){
         h+='<div class="schedule-item"><span class="task-info">🔁 '+esc(item.obj.name)+'</span><span class="actions"><button class="circle-btn" onclick="circleDoneCheckin(\''+item.obj.id+'\')">○</button></span></div>';
+      }else{
+        h+='<div class="schedule-item"><span class="task-info">💡 '+esc(item.obj.content)+'</span><span class="actions"><button class="circle-btn" onclick="circleDoneIdea(\''+item.obj.id+'\')">○</button></span></div>';
       }
     }
     list.innerHTML=h;
   }
 
   function handleKaigong(){
-    // 先检查是否需要推送小结
-    if(isSunday()){
-      generateSummary('week');
-    }else if(isLastDayOfMonth()){
-      generateSummary('month');
-    }
-    // 显示开工面板
+    if(isSunday()) generateSummary('week');
+    else if(isLastDayOfMonth()) generateSummary('month');
     renderSchedule();
     document.getElementById('schedulePanel').style.display='block';
   }
 
-  // ========== 打卡 ==========
   function addCheckin(name, freq){
     data.checkins.push({ id:genId(), name:name, freq:freq, records:[] });
     save(data);
   }
+
   window.circleDoneCheckin=function(id){
     var c=data.checkins.find(function(x){return x.id===id;});
     if(c){ c.records.push(getToday()); save(data); renderAll(); }
   };
+  window.circleDoneIdea=function(id){
+    var idea=data.ideas.find(function(x){return x.id===id;});
+    if(idea){ idea.done=true; idea.completedDate=getToday(); save(data); renderAll(); }
+  };
+  window.doneIdea=function(id){
+    window.circleDoneIdea(id);
+  };
+  window.cancelCheckin=function(id){
+    if(confirm('确定要取消这个打卡任务吗？')){
+      data.checkins=data.checkins.filter(function(x){return x.id!==id;});
+      save(data); renderAll();
+    }
+  };
+  window.doneBook=function(id){
+    var b=data.books.find(function(x){return x.id===id;});
+    if(b){ b.done=true; save(data); renderAll(); }
+  };
+  window.doneMovie=function(id){
+    var m=data.movies.find(function(x){return x.id===id;});
+    if(m){ m.done=true; save(data); renderAll(); }
+  };
 
-  // ========== 全局函数 ==========
   window.del=function(type,id){
     data[type]=data[type].filter(function(i){return i.id!==id;});
     save(data); renderAll();
@@ -447,11 +504,7 @@ function initApp(){
   };
   window.circleDoneTodo=function(id){
     var t=data.todos.find(function(x){return x.id===id;});
-    if(t){
-      t.done=true; t.completedDate=getToday();
-      if(t.isProject) t.progress=100;
-      save(data); renderAll();
-    }
+    if(t){ t.done=true; t.completedDate=getToday(); if(t.isProject) t.progress=100; save(data); renderAll(); }
   };
   window.updateProg=function(id){
     var p=prompt('输入进度 (0-100):','0');
@@ -460,30 +513,40 @@ function initApp(){
       if(t){ t.progress=Math.min(100,Math.max(0,parseInt(p)||0)); save(data); renderAll(); }
     }
   };
-  window.updateProgFromSchedule=function(id){
-    window.updateProg(id);
-  };
+  window.updateProgFromSchedule=function(id){ window.updateProg(id); };
 
-  // ========== 添加 ==========
   function addDiary(content){ if(!content.trim())return; data.diary.push({id:genId(),date:getToday(),content:content.trim()}); save(data); renderAll(); }
   function addTodo(content, extra){
     if(!content.trim())return;
-    data.todos.push({
-      id:genId(), date:extra.date||getToday(), content:content.trim(), done:false,
-      priority:extra.priority||'mid', category:extra.category||'life',
-      progress:extra.progress||0, isProject:extra.isProject||false
-    });
+    data.todos.push({id:genId(),date:extra.date||getToday(),content:content.trim(),done:false,priority:extra.priority||'mid',category:extra.category||'life',progress:extra.progress||0,isProject:extra.isProject||false});
     save(data); renderAll();
   }
-  function addIdea(content){ if(!content.trim())return; data.ideas.push({id:genId(),date:getToday(),content:content.trim()}); save(data); renderAll(); }
+  function addIdea(content){ if(!content.trim())return; data.ideas.push({id:genId(),date:getToday(),content:content.trim(),done:false}); save(data); renderAll(); }
+  function addBook(title,author){
+    if(!title.trim())return;
+    data.books.push({id:genId(),title:title.trim(),author:(author||'').trim(),done:false,date:getToday()});
+    save(data); renderAll();
+  }
+  function addMovie(title){
+    if(!title.trim())return;
+    data.movies.push({id:genId(),title:title.trim(),done:false,date:getToday()});
+    save(data); renderAll();
+  }
 
-  // ========== 按钮 ==========
   document.getElementById('diaryBtn').onclick=function(){ var i=document.getElementById('diaryInput'); addDiary(i.value); i.value=''; };
   document.getElementById('todoBtn').onclick=function(){
     var p=document.getElementById('todoPriority').value, c=document.getElementById('todoCategory').value;
     var d=document.getElementById('todoDate').value, t=document.getElementById('todoInput').value;
     addTodo(t,{priority:p,category:c,date:d}); document.getElementById('todoInput').value='';
   };
+  document.getElementById('bookBtn').onclick=function(){
+    var inp=document.getElementById('bookInput'), val=inp.value.trim();
+    if(val){ var parts=val.split('-'); addBook(parts[0].trim(),parts[1]?parts[1].trim():''); inp.value=''; }
+  };
+  document.getElementById('movieBtn').onclick=function(){
+    var inp=document.getElementById('movieInput'); addMovie(inp.value); inp.value='';
+  };
+
   document.getElementById('todoToggle').onclick=function(){
     var con=document.getElementById('todoContainer'), icon=document.getElementById('todoToggleIcon');
     if(con.style.display==='none'){ con.style.display='block'; icon.textContent='▼'; this.querySelector('span').textContent='(点击收起)'; }
@@ -497,13 +560,12 @@ function initApp(){
   document.getElementById('closeScheduleBtn').onclick=function(){ document.getElementById('schedulePanel').style.display='none'; };
   document.getElementById('closeSummaryBtn').onclick=function(){ document.getElementById('summaryPanel').style.display='none'; };
 
-  // ========== 万能输入 ==========
   function handleMagic(){
     var inp=document.getElementById('magicInput'), raw=inp.value.trim();
     if(!raw) return;
-
     if(raw==='开工'){ handleKaigong(); inp.value=''; return; }
 
+    // 打卡
     if(raw.indexOf('打卡')===0){
       var parts=raw.replace('打卡','').trim().split(/\s+/);
       var freq=parts[0], name=parts.slice(1).join(' ');
@@ -512,11 +574,18 @@ function initApp(){
       inp.value=''; return;
     }
 
+    // 推荐书目/影片
+    var bookMatch=raw.match(/^推荐书目[：:\s]*[《「](.+?)[》」]/)||raw.match(/^推荐书籍[：:\s]*[《「](.+?)[》」]/);
+    var movieMatch=raw.match(/^推荐影片[：:\s]*[《「](.+?)[》」]/)||raw.match(/^推荐电影[：:\s]*[《「](.+?)[》」]/);
+    if(bookMatch){ addBook(bookMatch[1].trim()); inp.value=''; return; }
+    if(movieMatch){ addMovie(movieMatch[1].trim()); inp.value=''; return; }
+
+    // 灵感
     if(raw.indexOf('灵感')!==-1){ addIdea(raw.replace('灵感','').trim()||raw); inp.value=''; return; }
 
+    // 项目
     if(raw.indexOf('项目')!==-1){
-      var content=raw.replace('项目','').trim()||raw;
-      var date=getToday();
+      var content=raw.replace('项目','').trim()||raw, date=getToday();
       var abs=content.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
       if(abs){
         var m=parseInt(abs[1]),d=parseInt(abs[2]), now=new Date(), y=now.getFullYear();
@@ -528,6 +597,7 @@ function initApp(){
       inp.value=''; return;
     }
 
+    // 普通待办
     var date=getToday(), content=raw, priority='mid', category='life';
     var abs=content.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
     if(abs){
@@ -546,7 +616,6 @@ function initApp(){
     }
     var rm={ '今天':0,'明天':1,'后天':2 };
     for(var k in rm){ if(content.indexOf(k)!==-1){ var dd=new Date(); dd.setDate(dd.getDate()+rm[k]); date=fmt(dd); content=content.replace(k,'').trim(); break; } }
-
     var teacherKW=['备课','上课','教案','学生','家长','作业','考试','教研','班级','班主任','课堂','批改','试卷','成绩','班会','家访','课件','教材','工作'];
     var isWork=false;
     for(var i=0;i<teacherKW.length;i++){ if(content.indexOf(teacherKW[i])!==-1){ isWork=true; break; } }
@@ -563,7 +632,6 @@ function initApp(){
   document.getElementById('magicBtn').onclick=handleMagic;
   document.getElementById('magicInput').onkeydown=function(e){ if(e.key==='Enter') handleMagic(); };
 
-  // ========== 导出日记 ==========
   window.exportDiary=function(){
     var diary=data.diary.sort(function(a,b){ return a.date.localeCompare(b.date); });
     var text='📝 我的开心日记\n\n';
@@ -572,6 +640,8 @@ function initApp(){
     var blob=new Blob([text],{type:'text/plain'});
     var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='开心日记.txt'; a.click();
   };
+
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
 
   renderAll();
 }

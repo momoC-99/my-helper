@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>每日小助手</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f3f0; color: #4a3f35; padding: 20px; max-width: 650px; margin: auto;
+    }
+    .header { text-align: center; margin-bottom: 15px; }
+    .header h1 { font-size: 1.8em; color: #8b5e3c; }
+    .encourage-box {
+      background: #ffe9d4; border-left: 6px solid #d49a6a; padding: 12px 15px;
+      border-radius: 12px; margin: 12px 0; font-style: italic; color: #5e3e26; font-size: 0.95em;
+    }
+    .command-area { display: flex; gap: 8px; margin-bottom: 15px; }
+    .command-area input {
+      flex: 1; padding: 12px 15px; border: 2px solid #d9c2a7; border-radius: 30px; font-size: 0.95em;
+    }
+    .command-area button {
+      background: #b45f4c; color: white; border: none; padding: 12px 20px;
+      border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 0.95em;
+    }
+
+    /* 开工面板 */
+    .schedule-panel {
+      background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.08); display: none;
+    }
+    .schedule-panel h3 { color: #8b5e3c; margin-bottom: 10px; font-size: 1.1em; }
+    .schedule-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; background: #fbf7f2; border-radius: 20px;
+      margin-bottom: 6px; border: 1px solid #f0e2d0; font-size: 0.9em; flex-wrap: wrap; gap: 6px;
+    }
+    .schedule-item .task-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
+    .schedule-item .actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .circle-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid #7a9c6c;
+      background: transparent; color: #7a9c6c; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1em; transition: all 0.2s;
+    }
+    .circle-btn.done { background: #7a9c6c; color: white; }
+    .mini-prog-btn {
+      background: #e0d5c1; border: none; padding: 3px 8px; border-radius: 12px;
+      cursor: pointer; font-size: 0.8em; font-weight: bold; color: #5e4e3c;
+    }
+    .progress-wrap { display: inline-flex; align-items: center; gap: 4px; }
+    .progress-bar-bg {
+      width: 45px; height: 6px; background: #e0d6c8; border-radius: 10px; overflow: hidden;
+    }
+    .progress-bar-fill { height: 100%; background: #8b9d7c; border-radius: 10px; }
+
+    /* 小结面板 */
+    .summary-panel {
+      background: #fff8f0; border-radius: 16px; padding: 18px; margin-bottom: 15px;
+      border: 1px solid #f0e2d0; line-height: 1.7; font-size: 0.9em; display: none;
+    }
+    .summary-panel h3 { color: #8b5e3c; margin-bottom: 8px; }
+
+    .card {
+      background: white; border-radius: 16px; padding: 16px; margin-bottom: 15px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+    }
+    .card h2 {
+      color: #8b5e3c; margin-bottom: 10px; border-bottom: 2px solid #f0e2d0;
+      padding-bottom: 5px; font-size: 1.1em; display: flex; align-items: center; gap: 8px;
+    }
+    .input-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .input-row input, .input-row select {
+      padding: 8px 10px; border: 1px solid #d9c2a7; border-radius: 12px; font-size: 0.9em;
+    }
+    .input-row button {
+      background: #b7a17a; color: white; border: none; padding: 8px 16px;
+      border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 0.9em;
+    }
+    .list-item {
+      background: #fbf7f2; padding: 8px 12px; border-radius: 20px; margin-bottom: 5px;
+      display: flex; justify-content: space-between; align-items: center;
+      border: 1px solid #f0e2d0; font-size: 0.9em; flex-wrap: wrap; gap: 6px;
+    }
+    .action-btn {
+      background: none; border: none; font-size: 1.2em; cursor: pointer;
+      padding: 4px 6px; margin-left: 2px;
+    }
+    .delete-btn { color: #c07a6b; }
+    .done-btn { color: #7a9c6c; }
+    .prog-btn { color: #d49a6a; font-size: 1em; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.7em; font-weight: bold; margin-right: 3px;
+    }
+    .priority-high { background: #fce4e4; color: #b33a3a; }
+    .priority-mid { background: #fff3cd; color: #856404; }
+    .priority-low { background: #d4edda; color: #155724; }
+    .cat-work { background: #d4d9f2; color: #2c3e6b; }
+    .cat-life { background: #f2e0d4; color: #7a4d34; }
+    .cat-hobby { background: #d4f2e0; color: #2d5a3a; }
+
+    .toggle-header {
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; user-select: none;
+    }
+    .toggle-header h2 { border: none; margin: 0; }
+    .footer-note { text-align: center; color: #b1a391; margin-top: 20px; font-size: 0.8em; }
+    .export-btn {
+      background: #8b9d7c; color: white; border: none; padding: 5px 12px;
+      border-radius: 15px; cursor: pointer; font-size: 0.8em;
+    }
+
+    .lock-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #f5f3f0; display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .lock-box {
+      background: white; padding: 35px; border-radius: 24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12); text-align: center; max-width: 380px; width: 90%;
+    }
+    .lock-box input {
+      width: 100%; padding: 14px; border: 2px solid #d9c2a7; border-radius: 16px;
+      font-size: 1.5em; text-align: center; letter-spacing: 6px; margin: 15px 0;
+    }
+    .lock-box button {
+      width: 100%; padding: 14px; background: #b45f4c; color: white;
+      border: none; border-radius: 30px; font-size: 1.1em; font-weight: bold; cursor: pointer;
+    }
+    .err { color: #c0392b; font-size: 0.9em; min-height: 22px; }
+    #app { display: none; }
+  </style>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="每日小助手">
+<link rel="apple-touch-icon" href="icon.png">
+</head>
+<script>
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+</script>
+<body>
+
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <h2>🔐 <span id="lockTitle">欢迎使用每日小助手</span></h2>
+    <p id="lockTip">请设置一个 4-6 位数字密码</p>
+    <input type="password" id="lockInput" placeholder="输入密码" maxlength="6">
+    <p class="err" id="lockError"></p>
+    <button id="lockBtn">确认设置</button>
+  </div>
+</div>
+
+<div id="app">
+<div class="header">
+  <h1>📒 每日小助手</h1>
+  <div class="encourage-box" id="encourageText"></div>
+</div>
+
+<div class="command-area">
+  <input type="text" id="magicInput" placeholder='输入"开工" / "打卡 每天 运动" / "项目 xx" / "灵感 xx"...'>
+  <button id="magicBtn">发送</button>
+</div>
+
+<!-- 小结面板（自动推送） -->
+<div class="summary-panel" id="summaryPanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <h3 id="summaryTitle" style="margin:0;">📊 小结</h3>
+    <button id="closeSummaryBtn" style="background:#d9c2a7;border:none;padding:4px 12px;border-radius:15px;cursor:pointer;font-size:0.85em;">关闭</button>
+  </div>
+  <div id="summaryContent"></div>
+</div>
+
+<!-- 开工提醒面板 -->
+<div class="schedule-panel" id="schedulePanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <h3 style="margin:0;">📋 今日行程提醒</h3>
+    <button id="closeScheduleBtn" style="background:#d9c2a7;border:none;padding:4px 12px;border-radius:15px;cursor:pointer;font-size:0.85em;">关闭</button>
+  </div>
+  <div id="scheduleList"></div>
+</div>
+
+<!-- 开心日记 -->
+<div class="card">
+  <h2>📝 开心日记 <button class="export-btn" onclick="exportDiary()">导出</button></h2>
+  <div class="input-row">
+    <input type="text" id="diaryInput" placeholder="今天发生了什么开心或值得记忆的事...">
+    <button id="diaryBtn">记录</button>
+  </div>
+  <div id="diaryList"></div>
+</div>
+
+<!-- 待办事项（折叠） -->
+<div class="card">
+  <div class="toggle-header" id="todoToggle">
+    <h2>✅ 待办事项 <span style="font-size:0.7em;color:#b1a391;">(点击展开)</span></h2>
+    <span id="todoToggleIcon" style="font-size:1.3em;">▶</span>
+  </div>
+  <div id="todoContainer" style="display:none;margin-top:10px;">
+    <div class="input-row">
+      <select id="todoPriority"><option value="high">🔥 高</option><option value="mid" selected>⚡ 中</option><option value="low">🌱 低</option></select>
+      <select id="todoCategory"><option value="work">💼 工作</option><option value="life">🏠 生活</option><option value="hobby">🎨 爱好</option></select>
+      <input type="date" id="todoDate">
+      <input type="text" id="todoInput" placeholder="要做的事...">
+      <button id="todoBtn">添加</button>
+    </div>
+    <div id="todoList"></div>
+  </div>
+</div>
+
+<!-- IDEA（折叠） -->
+<div class="card">
+  <div class="toggle-header" id="ideaToggle">
+    <h2>💡 IDEA <span style="font-size:0.7em;color:#b1a391;">(点击展开)</span></h2>
+    <span id="ideaToggleIcon" style="font-size:1.3em;">▶</span>
+  </div>
+  <div id="ideaContainer" style="display:none;margin-top:10px;">
+    <div id="ideaList"></div>
+    <p style="color:#b1a391;font-size:0.8em;">* 在顶部输入框输入"灵感 xx"会自动保存</p>
+  </div>
+</div>
+
+<div class="footer-note">✨ 所有数据安全保存在你的设备里</div>
+</div>
+
+<script>
+// ========== 密码 ==========
+(function(){
+  var KEY='my_pwd', saved=localStorage.getItem(KEY), isNew=!saved;
+  document.getElementById('lockTitle').textContent=isNew?'设置密码':'请输入密码';
+  document.getElementById('lockTip').textContent=isNew?'请设置一个 4-6 位数字密码':'输入密码解锁';
+  document.getElementById('lockBtn').textContent=isNew?'确认设置':'解锁';
+  document.getElementById('lockBtn').onclick=function(){
+    var v=document.getElementById('lockInput').value.trim();
+    document.getElementById('lockError').textContent='';
+    if(!v){ document.getElementById('lockError').textContent='请输入密码'; return; }
+    if(isNew){
+      if(!/^\d{4,6}$/.test(v)){ document.getElementById('lockError').textContent='需要4-6位数字'; return; }
+      localStorage.setItem(KEY,v); unlock();
+    }else{
+      if(v===saved) unlock(); else document.getElementById('lockError').textContent='密码错误';
+    }
+  };
+  function unlock(){ document.getElementById('lockScreen').style.display='none'; document.getElementById('app').style.display='block'; initApp(); }
+})();
+
+// ========== 核心应用 ==========
+function initApp(){
+  var quotes=["每一天都是崭新的开始，加油！","你值得拥有美好的一切。","再小的努力，乘以365都很明显。","今天也是被爱包围的一天。","慢慢来，会更快。","你的存在本身就是一种美好。"];
+  function getToday(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function genId(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,6); }
+  var STORAGE='daily_joy_data_v4';
+  function load(){ var r=localStorage.getItem(STORAGE); return r?JSON.parse(r):{ diary:[], todos:[], ideas:[], checkins:[] }; }
+  function save(d){ localStorage.setItem(STORAGE,JSON.stringify(d)); }
+  var data=load();
+  if(!data.checkins) data.checkins=[];
+  document.getElementById('encourageText').textContent='\u201C'+quotes[Math.floor(Math.random()*quotes.length)]+'\u201D';
+  document.getElementById('todoDate').value=getToday();
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ========== 日期工具 ==========
+  function isSunday(){ return new Date().getDay()===0; }
+  function isLastDayOfMonth(){
+    var d=new Date();
+    var lastDay=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    return d.getDate()===lastDay;
+  }
+  function getWeekRange(){
+    var d=new Date(), day=d.getDay(), diff=day===0?-6:1-day;
+    var start=new Date(d); start.setDate(d.getDate()+diff); start.setHours(0,0,0,0);
+    var end=new Date(start); end.setDate(start.getDate()+6); end.setHours(23,59,59);
+    return {start:start,end:end};
+  }
+  function getMonthRange(){
+    var d=new Date();
+    var start=new Date(d.getFullYear(),d.getMonth(),1);
+    var end=new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59);
+    return {start:start,end:end};
+  }
+  function fmt(dd){ return dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'); }
+  function inRange(d,start,end){ var dd=new Date(d); return dd>=start&&dd<=end; }
+
+  // ========== 打卡判断 ==========
+  function isCheckinDueToday(c){
+    var today=new Date(), dayOfWeek=today.getDay();
+    var cnDay=['周日','周一','周二','周三','周四','周五','周六'][dayOfWeek];
+    if(c.freq==='每天') return true;
+    if(c.freq.indexOf(cnDay)!==-1) return true;
+    return false;
+  }
+
+  // ========== 渲染 ==========
+  function renderAll(){
+    var today=getToday();
+
+    // 日记
+    var dh='', di=data.diary.filter(function(i){return i.date===today;});
+    if(!di.length) dh='<div style="color:#b1a391;font-size:0.9em;">今天还没有记录~</div>';
+    else for(var i=0;i<di.length;i++) dh+='<div class="list-item"><span>📝 '+esc(di[i].content)+'</span><button class="action-btn delete-btn" onclick="del(\'diary\',\''+di[i].id+'\')">✕</button></div>';
+    document.getElementById('diaryList').innerHTML=dh;
+
+    // 待办
+    var th='', todos=data.todos.filter(function(t){return !t.done;});
+    var order={high:0,mid:1,low:2};
+    todos.sort(function(a,b){return (order[a.priority]||1)-(order[b.priority]||1);});
+    if(!todos.length) th='<div style="color:#b1a391;font-size:0.9em;">暂无待办~</div>';
+    else for(var i=0;i<todos.length;i++){
+      var t=todos[i], pl={high:'高',mid:'中',low:'低'}[t.priority], cl={work:'工作',life:'生活',hobby:'爱好'}[t.category];
+      var isP=t.isProject||false, prog=t.progress||0;
+      th+='<div class="list-item"><span><span class="badge priority-'+t.priority+'">'+pl+'</span><span class="badge cat-'+t.category+'">'+cl+'</span>📅'+t.date+' '+esc(t.content);
+      if(isP) th+=' <span class="progress-wrap"><span class="progress-bar-bg"><span class="progress-bar-fill" style="width:'+prog+'%"></span></span>'+prog+'%</span>';
+      th+='</span><div>';
+      if(isP) th+='<button class="action-btn prog-btn" onclick="updateProg(\''+t.id+'\')">📊</button>';
+      th+='<button class="action-btn done-btn" onclick="doneTodo(\''+t.id+'\')">✔️</button>';
+      th+='<button class="action-btn delete-btn" onclick="del(\'todos\',\''+t.id+'\')">✕</button>';
+      th+='</div></div>';
+    }
+    document.getElementById('todoList').innerHTML=th;
+
+    // IDEA
+    var ih='', ideas=data.ideas.slice(-15).reverse();
+    if(!ideas.length) ih='<div style="color:#b1a391;font-size:0.9em;">还没有灵感记录~</div>';
+    else for(var i=0;i<ideas.length;i++) ih+='<div class="list-item"><span>💡 '+esc(ideas[i].content)+' <small style="color:#b1a391;">('+ideas[i].date+')</small></span><button class="action-btn delete-btn" onclick="del(\'ideas\',\''+ideas[i].id+'\')">✕</button></div>';
+    document.getElementById('ideaList').innerHTML=ih;
+
+    if(document.getElementById('schedulePanel').style.display==='block') renderSchedule();
+  }
+
+  // ========== 小结生成 ==========
+  function generateSummary(type){
+    var range, label;
+    if(type==='week'){ range=getWeekRange(); label='本周'; }
+    else{ range=getMonthRange(); label='本月'; }
+    var start=range.start, end=range.end;
+
+    var completed=data.todos.filter(function(t){return t.done&&t.completedDate&&inRange(t.completedDate,start,end);});
+    var diaryCount=data.diary.filter(function(d){return inRange(d.date,start,end);}).length;
+    var ideaCount=data.ideas.filter(function(d){return inRange(d.date,start,end);}).length;
+
+    var checkinStats='';
+    for(var i=0;i<data.checkins.length;i++){
+      var c=data.checkins[i], count=0, totalDays=0;
+      for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+        totalDays++;
+        if(c.records.indexOf(fmt(d))!==-1) count++;
+      }
+      var pct=totalDays>0?Math.round(count/totalDays*100):0;
+      checkinStats+='<p>🔁 '+esc(c.name)+'：完成 '+count+' 次（'+pct+'%）</p>';
+    }
+
+    var msg='';
+    if(type==='week'){
+      msg+='<p>✅ 本周完成了 <b>'+completed.length+'</b> 项任务：</p>';
+      if(completed.length>0){
+        msg+='<ul>';
+        for(var i=0;i<completed.length;i++) msg+='<li>'+esc(completed[i].content)+'</li>';
+        msg+='</ul>';
+      }
+      msg+='<p>📝 记录了 <b>'+diaryCount+'</b> 篇开心日记</p>';
+      msg+='<p>💡 捕捉了 <b>'+ideaCount+'</b> 个灵感</p>';
+      msg+=checkinStats;
+    }else{
+      msg+='<p>✅ 本月完成了 <b>'+completed.length+'</b> 项任务</p>';
+      msg+='<p>📝 记录了 <b>'+diaryCount+'</b> 篇日记</p>';
+      msg+='<p>💡 捕捉了 <b>'+ideaCount+'</b> 个灵感</p>';
+      msg+=checkinStats;
+    }
+
+    msg+='<p style="margin-top:8px;color:#8b5e3c;">';
+    if(completed.length>10) msg+='你像一颗小太阳，高效又温暖 ☀️';
+    else if(diaryCount>5) msg+='你用心记录生活，本身就是一种美好 🌸';
+    else msg+='每一天都在积累，你比自己想象的更强大 🌱';
+    msg+='</p>';
+
+    document.getElementById('summaryTitle').textContent='📊 '+label+'小结';
+    document.getElementById('summaryContent').innerHTML=msg;
+    document.getElementById('summaryPanel').style.display='block';
+  }
+
+  // ========== 开工面板（含自动推送小结） ==========
+  function renderSchedule(){
+    var today=getToday();
+    var list=document.getElementById('scheduleList');
+
+    // 只显示今天和今天之前未完成的待办
+    var todos=data.todos.filter(function(t){return !t.done && t.date <= today;});
+    var checkins=data.checkins.filter(function(c){return isCheckinDueToday(c);});
+
+    var all=[];
+    for(var i=0;i<todos.length;i++) all.push({type:'todo',obj:todos[i]});
+    for(var i=0;i<checkins.length;i++) all.push({type:'checkin',obj:checkins[i]});
+
+    if(!all.length){ list.innerHTML='<div style="color:#b1a391;padding:8px;font-size:0.9em;">今天没有行程~ 🌿</div>'; return; }
+
+    var h='';
+    for(var i=0;i<all.length;i++){
+      var item=all[i];
+      if(item.type==='todo'){
+        var t=item.obj, isP=t.isProject||false, prog=t.progress||0;
+        h+='<div class="schedule-item">';
+        h+='<span class="task-info">📌 '+esc(t.content);
+        if(isP) h+=' <span class="progress-wrap"><span class="progress-bar-bg"><span class="progress-bar-fill" style="width:'+prog+'%"></span></span>'+prog+'%</span>';
+        h+='</span>';
+        h+='<span class="actions">';
+        if(isP) h+='<button class="mini-prog-btn" onclick="updateProgFromSchedule(\''+t.id+'\')">📊</button>';
+        h+='<button class="circle-btn" onclick="circleDoneTodo(\''+t.id+'\')">○</button>';
+        h+='</span></div>';
+      }else{
+        h+='<div class="schedule-item"><span class="task-info">🔁 '+esc(item.obj.name)+'</span><span class="actions"><button class="circle-btn" onclick="circleDoneCheckin(\''+item.obj.id+'\')">○</button></span></div>';
+      }
+    }
+    list.innerHTML=h;
+  }
+
+  function handleKaigong(){
+    // 先检查是否需要推送小结
+    if(isSunday()){
+      generateSummary('week');
+    }else if(isLastDayOfMonth()){
+      generateSummary('month');
+    }
+    // 显示开工面板
+    renderSchedule();
+    document.getElementById('schedulePanel').style.display='block';
+  }
+
+  // ========== 打卡 ==========
+  function addCheckin(name, freq){
+    data.checkins.push({ id:genId(), name:name, freq:freq, records:[] });
+    save(data);
+  }
+  window.circleDoneCheckin=function(id){
+    var c=data.checkins.find(function(x){return x.id===id;});
+    if(c){ c.records.push(getToday()); save(data); renderAll(); }
+  };
+
+  // ========== 全局函数 ==========
+  window.del=function(type,id){
+    data[type]=data[type].filter(function(i){return i.id!==id;});
+    save(data); renderAll();
+  };
+  window.doneTodo=function(id){
+    var t=data.todos.find(function(x){return x.id===id;});
+    if(t){ t.done=true; t.completedDate=getToday(); save(data); renderAll(); }
+  };
+  window.circleDoneTodo=function(id){
+    var t=data.todos.find(function(x){return x.id===id;});
+    if(t){
+      t.done=true; t.completedDate=getToday();
+      if(t.isProject) t.progress=100;
+      save(data); renderAll();
+    }
+  };
+  window.updateProg=function(id){
+    var p=prompt('输入进度 (0-100):','0');
+    if(p!==null){
+      var t=data.todos.find(function(x){return x.id===id;});
+      if(t){ t.progress=Math.min(100,Math.max(0,parseInt(p)||0)); save(data); renderAll(); }
+    }
+  };
+  window.updateProgFromSchedule=function(id){
+    window.updateProg(id);
+  };
+
+  // ========== 添加 ==========
+  function addDiary(content){ if(!content.trim())return; data.diary.push({id:genId(),date:getToday(),content:content.trim()}); save(data); renderAll(); }
+  function addTodo(content, extra){
+    if(!content.trim())return;
+    data.todos.push({
+      id:genId(), date:extra.date||getToday(), content:content.trim(), done:false,
+      priority:extra.priority||'mid', category:extra.category||'life',
+      progress:extra.progress||0, isProject:extra.isProject||false
+    });
+    save(data); renderAll();
+  }
+  function addIdea(content){ if(!content.trim())return; data.ideas.push({id:genId(),date:getToday(),content:content.trim()}); save(data); renderAll(); }
+
+  // ========== 按钮 ==========
+  document.getElementById('diaryBtn').onclick=function(){ var i=document.getElementById('diaryInput'); addDiary(i.value); i.value=''; };
+  document.getElementById('todoBtn').onclick=function(){
+    var p=document.getElementById('todoPriority').value, c=document.getElementById('todoCategory').value;
+    var d=document.getElementById('todoDate').value, t=document.getElementById('todoInput').value;
+    addTodo(t,{priority:p,category:c,date:d}); document.getElementById('todoInput').value='';
+  };
+  document.getElementById('todoToggle').onclick=function(){
+    var con=document.getElementById('todoContainer'), icon=document.getElementById('todoToggleIcon');
+    if(con.style.display==='none'){ con.style.display='block'; icon.textContent='▼'; this.querySelector('span').textContent='(点击收起)'; }
+    else{ con.style.display='none'; icon.textContent='▶'; this.querySelector('span').textContent='(点击展开)'; }
+  };
+  document.getElementById('ideaToggle').onclick=function(){
+    var con=document.getElementById('ideaContainer'), icon=document.getElementById('ideaToggleIcon');
+    if(con.style.display==='none'){ con.style.display='block'; icon.textContent='▼'; this.querySelector('span').textContent='(点击收起)'; }
+    else{ con.style.display='none'; icon.textContent='▶'; this.querySelector('span').textContent='(点击展开)'; }
+  };
+  document.getElementById('closeScheduleBtn').onclick=function(){ document.getElementById('schedulePanel').style.display='none'; };
+  document.getElementById('closeSummaryBtn').onclick=function(){ document.getElementById('summaryPanel').style.display='none'; };
+
+  // ========== 万能输入 ==========
+  function handleMagic(){
+    var inp=document.getElementById('magicInput'), raw=inp.value.trim();
+    if(!raw) return;
+
+    if(raw==='开工'){ handleKaigong(); inp.value=''; return; }
+
+    if(raw.indexOf('打卡')===0){
+      var parts=raw.replace('打卡','').trim().split(/\s+/);
+      var freq=parts[0], name=parts.slice(1).join(' ');
+      if(freq&&name){ addCheckin(name,freq); alert('已添加打卡：'+name+' ('+freq+')'); }
+      else{ alert('格式：打卡 每天 运动 或 打卡 周一周三 健身'); }
+      inp.value=''; return;
+    }
+
+    if(raw.indexOf('灵感')!==-1){ addIdea(raw.replace('灵感','').trim()||raw); inp.value=''; return; }
+
+    if(raw.indexOf('项目')!==-1){
+      var content=raw.replace('项目','').trim()||raw;
+      var date=getToday();
+      var abs=content.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+      if(abs){
+        var m=parseInt(abs[1]),d=parseInt(abs[2]), now=new Date(), y=now.getFullYear();
+        if(m<(now.getMonth()+1)) y++;
+        date=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+        content=content.replace(abs[0],'').trim();
+      }
+      addTodo(content,{isProject:true,priority:'mid',category:'life',date:date});
+      inp.value=''; return;
+    }
+
+    var date=getToday(), content=raw, priority='mid', category='life';
+    var abs=content.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if(abs){
+      var m=parseInt(abs[1]),d=parseInt(abs[2]), now=new Date(), y=now.getFullYear();
+      if(m<(now.getMonth()+1)) y++;
+      date=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      content=content.replace(abs[0],'').trim();
+    }else{
+      var sl=content.match(/(\d{1,2})\/(\d{1,2})/);
+      if(sl){
+        var m=parseInt(sl[1]),d=parseInt(sl[2]), now=new Date(), y=now.getFullYear();
+        if(m<(now.getMonth()+1)) y++;
+        date=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+        content=content.replace(sl[0],'').trim();
+      }
+    }
+    var rm={ '今天':0,'明天':1,'后天':2 };
+    for(var k in rm){ if(content.indexOf(k)!==-1){ var dd=new Date(); dd.setDate(dd.getDate()+rm[k]); date=fmt(dd); content=content.replace(k,'').trim(); break; } }
+
+    var teacherKW=['备课','上课','教案','学生','家长','作业','考试','教研','班级','班主任','课堂','批改','试卷','成绩','班会','家访','课件','教材','工作'];
+    var isWork=false;
+    for(var i=0;i<teacherKW.length;i++){ if(content.indexOf(teacherKW[i])!==-1){ isWork=true; break; } }
+    if(isWork){ priority='high'; category='work'; }
+    if(content.indexOf('高')!==-1&&!isWork){ priority='high'; content=content.replace('高','').trim(); }
+    if(content.indexOf('低')!==-1){ priority='low'; content=content.replace('低','').trim(); }
+    if(content.indexOf('爱好')!==-1){ category='hobby'; content=content.replace('爱好','').trim(); }
+    content=content.trim();
+    if(content.length>=2) addTodo(content,{priority:priority,category:category,date:date});
+    else addIdea(raw);
+    inp.value='';
+  }
+
+  document.getElementById('magicBtn').onclick=handleMagic;
+  document.getElementById('magicInput').onkeydown=function(e){ if(e.key==='Enter') handleMagic(); };
+
+  // ========== 导出日记 ==========
+  window.exportDiary=function(){
+    var diary=data.diary.sort(function(a,b){ return a.date.localeCompare(b.date); });
+    var text='📝 我的开心日记\n\n';
+    for(var i=0;i<diary.length;i++){ text+='【'+diary[i].date+'】 '+diary[i].content+'\n'; }
+    text+='\n导出时间：'+new Date().toLocaleString();
+    var blob=new Blob([text],{type:'text/plain'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='开心日记.txt'; a.click();
+  };
+
+  renderAll();
+}
+</script>
+</body>
+</html>
